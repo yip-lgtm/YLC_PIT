@@ -108,13 +108,15 @@ function saveMeta() {
 }
 let META = loadMeta();
 let PHOTOS = {};
-// 公開相片對照表（放在 repo 裡就會變成公開網址）
 const PUBLIC_PHOTOS = {
-  "R52-2A-1": [
-    "photos/R52-2A-1-1.jpg",
-    "photos/R52-2A-1-2.jpg"
-  ]
+  "R52-2A-1": ["photos/R52-2A-1-1.jpg", "photos/R52-2A-1-2.jpg"],
+  "R51-1A-1": ["photos/R51-1A-1-1.jpg"],
+  "R72-2A-1": ["photos/R72-2A-1-1.jpg", "photos/R72-2A-1-2.jpg"],
+  "R64-4A-1": ["photos/R64-4A-1-1.jpg", "photos/R64-4A-1-2.jpg"],
+  "R54-4A-1": ["photos/R54-4A-1-1.jpg", "photos/R54-4A-1-2.jpg"],
+  "R51-1E-1": ["photos/R51-1E-1-1.jpg", "photos/R51-1E-1-2.jpg", "photos/R51-1E-1-3.jpg"]
 };
+const SEED_META = {"R52-2A-1":{"status":"nfc","excavate":"2026-10-21","nfc":"2026-10-21","note":""},"R51-1A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-21","note":""},"R72-2A-1":{"status":"nfc","excavate":"2026-10-22","nfc":"2026-10-23","note":""},"R64-4A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-22","note":""},"R54-4A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-21","note":""},"R51-1E-1":{"status":"none","excavate":"","nfc":"","note":""}};
 function meta(id) { return META[id] || { status: "none", excavate: "", nfc: "", note: "" }; }
 function show(item) {
   const q = document.getElementById("q").value.trim().toLowerCase();
@@ -314,9 +316,9 @@ document.getElementById("importFile").onchange = function (e) {
 };
 render();
 Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("photos").catch(function () { return {}; })]).then(function (pair) {
-  if (!Object.keys(META).length && pair[0]) META = pair[0];
+  if (!Object.keys(META).length) META = Object.assign({}, SEED_META);
+  else META = Object.assign({}, SEED_META, META);
   PHOTOS = pair[1] || {};
-  // Merge public photos into PHOTOS
   Object.keys(PUBLIC_PHOTOS).forEach(function(id) {
     if (!PHOTOS[id] || PHOTOS[id].length === 0) {
       PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
