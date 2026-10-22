@@ -108,6 +108,13 @@ function saveMeta() {
 }
 let META = loadMeta();
 let PHOTOS = {};
+// 公開相片對照表（放在 repo 裡就會變成公開網址）
+const PUBLIC_PHOTOS = {
+  "R52-2A-1": [
+    "photos/R52-2A-1-1.jpg",
+    "photos/R52-2A-1-2.jpg"
+  ]
+};
 function meta(id) { return META[id] || { status: "none", excavate: "", nfc: "", note: "" }; }
 function show(item) {
   const q = document.getElementById("q").value.trim().toLowerCase();
@@ -309,6 +316,12 @@ render();
 Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("photos").catch(function () { return {}; })]).then(function (pair) {
   if (!Object.keys(META).length && pair[0]) META = pair[0];
   PHOTOS = pair[1] || {};
+  // Merge public photos into PHOTOS
+  Object.keys(PUBLIC_PHOTOS).forEach(function(id) {
+    if (!PHOTOS[id] || PHOTOS[id].length === 0) {
+      PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
+    }
+  });
   saveMeta();
   render();
   const h = location.hash.slice(1);
