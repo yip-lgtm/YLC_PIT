@@ -316,13 +316,12 @@ document.getElementById("importFile").onchange = function (e) {
 };
 render();
 Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("photos").catch(function () { return {}; })]).then(function (pair) {
-  if (!Object.keys(META).length) META = Object.assign({}, SEED_META);
-  else META = Object.assign({}, SEED_META, META);
+  // Force seed statuses for known pits (overwrite local "none")
+  META = Object.assign({}, META, SEED_META);
   PHOTOS = pair[1] || {};
+  // Always prefer public photos when available
   Object.keys(PUBLIC_PHOTOS).forEach(function(id) {
-    if (!PHOTOS[id] || PHOTOS[id].length === 0) {
-      PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
-    }
+    PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
   });
   saveMeta();
   render();
