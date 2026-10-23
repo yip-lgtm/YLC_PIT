@@ -1,3 +1,10 @@
+const READ_ONLY = /[?&]read(=1|&|$)/.test(location.search) || location.hash === "#read";
+if (READ_ONLY) {
+  document.title = "YLC triangle (read-only)";
+  const h1 = document.querySelector("h1");
+  if (h1) h1.innerHTML = h1.innerHTML.replace("pattern", "read-only");
+}
+
 const LETTERS = ["A", "B", "C", "D", "E"];
 const COLS = [
   { row: 21, n: 11, p: 1 }, { row: 22, n: 10, p: 2 }, { row: 23, n: 10, p: 3 }, { row: 24, n: 10, p: 4 },
@@ -198,10 +205,13 @@ function cellBtn(item, top, mid) {
   const m = meta(item.id);
   const has = (PHOTOS[item.id] || []).length;
   const cls = item.kind === "nail" ? "nail" : "letter-" + item.letter;
+  var statusPart = READ_ONLY
+    ? '<div class="sub">' + ((STATUS.filter(function(s){return s.v===m.status})[0]||{t:"未開始"}).t) + "</div>"
+    : '<select data-status="' + item.id + '">' + opts(m.status) + "</select>";
   return '<div class="cell ' + cls + " " + m.status + (has ? " has" : "") + '" data-id="' + item.id + '">' +
     '<div class="mk" data-open="' + item.id + '">' + top + "</div>" +
     '<div class="sub">' + mid + "</div>" +
-    '<select data-status="' + item.id + '">' + opts(m.status) + "</select></div>";
+    statusPart + "</div>";
 }
 function render() {
   const c = { none: 0, exc: 0, nfc: 0, done: 0, photo: 0 };
@@ -257,7 +267,7 @@ function render() {
       edit(el.getAttribute("data-id"));
     };
   });
-  document.querySelectorAll("[data-status]").forEach(function (el) {
+  if (!READ_ONLY) document.querySelectorAll("[data-status]").forEach(function (el) {
     el.onchange = function (ev) {
       ev.stopPropagation();
       const id = el.getAttribute("data-status");
@@ -286,13 +296,19 @@ function edit(id) {
     "<h2>" + item.id + "</h2>" +
     '<div class="note">' + (item.kind === "nail" ? "Soil nail" : "NFC pit") + " · " + info + "</div>" +
     '<div class="grid2">' +
-    '<div class="field"><label>狀態</label><select id="f-status">' + opts + "</select></div>" +
-    '<div class="field"><label>開始日期</label><input id="f-exc" type="date" value="' + (m.excavate || "") + '"></div>' +
-    '<div class="field"><label>完成日期</label><input id="f-nfc" type="date" value="' + (m.nfc || "") + '"></div>' +
-    '<div class="field"><label>備註</label><input id="f-note" type="text" value="' + esc(m.note) + '"></div>' +
+    (READ_ONLY
+      ? '<div class="field"><label>狀態</label><div>' + ((STATUS.filter(function(s){return s.v===m.status})[0]||{t:""}).t) + "</div></div>" +
+        '<div class="field"><label>開始日期</label><div>' + (m.excavate || "-") + "</div></div>" +
+        '<div class="field"><label>完成日期</label><div>' + (m.nfc || "-") + "</div></div>" +
+        '<div class="field"><label>備註</label><div>' + esc(m.note || "-") + "</div></div>"
+      : '<div class="field"><label>狀態</label><select id="f-status">' + opts + "</select></div>" +
+        '<div class="field"><label>開始日期</label><input id="f-exc" type="date" value="' + (m.excavate || "") + '"></div>' +
+        '<div class="field"><label>完成日期</label><input id="f-nfc" type="date" value="' + (m.nfc || "") + '"></div>' +
+        '<div class="field"><label>備註</label><input id="f-note" type="text" value="' + esc(m.note) + '"></div>'
+    ) +
     "</div>" +
-    '<div class="field"><label>上載相片</label><input id="f-photo" type="file" accept="image/*" multiple><div class="photos" id="photoBox"></div></div>' +
-    '<div class="actions"><button class="primary" id="saveBtn">儲存</button><button id="dlBtn">下載 HTML</button><button id="closeBtn">關閉</button></div>' +
+    '<div class="field"><label>相片</label>' + (READ_ONLY ? "" : '<input id="f-photo" type="file" accept="image/*" multiple>') + '<div class="photos" id="photoBox"></div></div>' +
+    '<div class="actions">' + (READ_ONLY ? "" : '<button class="primary" id="saveBtn">儲存</button>') + '<button id="dlBtn">下載 HTML</button><button id="closeBtn">關閉</button></div>' +
     '<div class="note">#' + id + "</div>";
   const box = document.getElementById("photoBox");
   photos.forEach(function (src, i) {
@@ -310,7 +326,7 @@ function edit(id) {
     fig.appendChild(btn);
     box.appendChild(fig);
   });
-  document.getElementById("f-photo").onchange = function (e) {
+  if (!READ_ONLY && document.getElementById("f-photo")) document.getElementById("f-photo").onchange = function (e) {
     const files = Array.prototype.slice.call(e.target.files);
     Promise.all(files.map(readFile)).then(function (urls) {
       urls.forEach(function (u) { photos.push(u); });
@@ -318,7 +334,7 @@ function edit(id) {
       put("photos", id, photos).then(function () { edit(id); });
     });
   };
-  document.getElementById("saveBtn").onclick = function () {
+  if (!READ_ONLY) document.getElementById("saveBtn").onclick = function () {
     META[id] = {
       status: document.getElementById("f-status").value,
       excavate: document.getElementById("f-exc").value,
@@ -358,6 +374,12 @@ document.getElementById("filter").onchange = render;
 document.getElementById("overlay").onclick = function (e) {
   if (e.target.id === "overlay") document.getElementById("overlay").classList.remove("open");
 };
+if (READ_ONLY) {
+  var eb = document.getElementById("exportBtn");
+  var ib = document.getElementById("importBtn");
+  if (eb) eb.style.display = "none";
+  if (ib) ib.style.display = "none";
+}
 document.getElementById("exportBtn").onclick = function () {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify({ meta: META, photos: PHOTOS })], { type: "application/json" }));

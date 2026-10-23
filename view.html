@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YLC triangle 124+26</title>
+<style>
+:root{--bg:#0e141b;--panel:#17202b;--line:#314155;--text:#e8eef6;--muted:#8ea0b5;--accent:#3d8bfd}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;z-index:20;background:rgba(14,20,27,.96);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:16px} h1 span{color:var(--muted);font-weight:500;font-size:12px;margin-left:6px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{background:#223044;border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px;color:var(--muted)}
+.chip b{color:var(--text)}
+button,select,input{background:#223044;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+button{cursor:pointer} button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+main{padding:12px 14px 32px}
+.legend{font-size:12px;color:var(--muted);margin-bottom:10px}
+.band{margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.band h3{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.line{display:flex;gap:6px;align-items:flex-start;margin-bottom:6px}
+.lbl{width:72px;flex:0 0 72px;font-size:12px;color:var(--muted);padding-top:10px}
+.cells{display:flex;flex-wrap:wrap;gap:5px}
+.tri{overflow:auto}
+.heads,.grid{display:grid;grid-template-columns:28px repeat(22,52px);gap:2px;align-items:stretch}
+.head,.rlabel{font-size:10px;color:var(--muted);text-align:center;height:18px;line-height:18px}
+.rlabel{height:46px;line-height:46px;font-weight:700}
+.empty{width:52px;height:46px}
+.cell{width:52px;height:52px;min-height:52px;padding:2px;border-radius:4px;border:1px solid var(--line);background:#121a24;text-align:center;position:relative;color:var(--text);overflow:hidden;cursor:pointer}
+.cell select{width:100%;margin:0;padding:0;font-size:11px;height:18px;background:#0e141b;color:var(--text);border:1px solid var(--line);border-radius:3px}
+.cell .mk{font-weight:700;font-size:12px;line-height:14px;cursor:pointer}
+.cell .sub{display:none}
+.nailgrid{display:grid;grid-template-columns:54px 54px 54px;gap:3px;width:max-content}
+.nhead{font-size:12px;color:var(--muted);text-align:center;font-weight:700}
+.cell:hover{outline:2px solid var(--accent)}
+.cell .mk{font-weight:700;font-size:13px}
+.cell .sub{font-size:10px;color:var(--muted);line-height:1.2}
+.cell.has::after{content:"";position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#58a6ff}
+.none{background:#121a24} .exc{background:#16324f} .nfc{background:#163828} .done{background:#14532d}
+.letter-A{box-shadow:inset 3px 0 0 #3d8bfd} .letter-C{box-shadow:inset 3px 0 0 #2ea043}
+.letter-E{box-shadow:inset 3px 0 0 #d29922} .letter-B{box-shadow:inset 3px 0 0 #a371f7}
+.letter-D{box-shadow:inset 3px 0 0 #f85149} .nail{box-shadow:inset 3px 0 0 #f0b429}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:40;overflow:auto;padding:18px 10px}
+.overlay.open{display:block}
+.card{width:min(880px,100%);margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}.cell{width:70px}}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.field{margin-bottom:10px}
+.photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.photos figure{margin:0;width:130px}
+.photos img{width:130px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.cell select{width:100%;margin-top:2px;padding:1px 2px;font-size:10px;background:#0e141b;color:var(--text);border:1px solid var(--line);border-radius:4px}
+.cell .mk{cursor:pointer}
+.saved{font-size:12px;color:#56d364}
+</style>
+</head>
+<body>
+<header>
+  <h1>YLC triangle <span>124 pits + 26 nails · pattern</span></h1>
+  <div class="row" id="stats"></div>
+  <div class="row">
+    <input id="q" type="search" placeholder="search 1A / A-1 / R21">
+    <select id="filter">
+      <option value="">all</option>
+      <option value="pit">pits</option>
+      <option value="nail">nails</option>
+      <option value="none">not started</option>
+      <option value="exc">excavated</option>
+      <option value="nfc">filled</option>
+      <option value="done">verified</option>
+    </select>
+    <button id="exportBtn">export</button>
+    <button id="importBtn">import</button>
+    <input id="importFile" type="file" accept="application/json" hidden>
+  </div>
+</header>
+<main>
+  <div class="legend">點格開編輯。底下選單改狀態，會即時儲存（這部瀏覽器）。<span class="saved" id="saved"></span></div>
+  <div id="plan">loading...</div>
+</main>
+<div class="overlay" id="overlay"><div class="card" id="card"></div></div>
+<script src="app.js?v=10&read=1"></script>
+</body>
+</html>
