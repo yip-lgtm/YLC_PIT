@@ -185,6 +185,25 @@ async function saveToSupabase(id, data) {
 }
 
 
+
+async function uploadPhotoToSupabase(pitId, file) {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = pitId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+  const url = SUPABASE_URL + "/storage/v1/object/photos/" + path;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON,
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "Content-Type": file.type || "image/jpeg",
+      "x-upsert": "true"
+    },
+    body: file
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return SUPABASE_URL + "/storage/v1/object/public/photos/" + path;
+}
+
 function meta(id) { return META[id] || { status: "none", excavate: "", nfc: "", note: "" }; }
 function show(item) {
   const q = document.getElementById("q").value.trim().toLowerCase();
@@ -328,8 +347,10 @@ function edit(id) {
   });
   if (!READ_ONLY && document.getElementById("f-photo")) document.getElementById("f-photo").onchange = function (e) {
     const files = Array.prototype.slice.call(e.target.files);
-    Promise.all(files.map(readFile)).then(function (urls) {
-      urls.forEach(function (u) { photos.push(u); });
+    Promise.all(files.map(function (f) {
+      return uploadPhotoToSupabase(id, f).catch(function () { return readFile(f); });
+    })).then(function (urls) {
+      urls.forEach(function (u) { if (u) photos.push(u); });
       PHOTOS[id] = photos;
       put("photos", id, photos).then(function () { edit(id); });
     });
