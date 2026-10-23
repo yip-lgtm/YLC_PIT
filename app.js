@@ -152,6 +152,9 @@ async function loadFromSupabase() {
         nfc: row.nfc || "",
         note: row.note || ""
       };
+      if (row.photos && row.photos.length) {
+        PHOTOS[row.id] = row.photos.slice();
+      }
     });
     saveMeta();
     render();
@@ -202,6 +205,18 @@ async function uploadPhotoToSupabase(pitId, file) {
   });
   if (!r.ok) throw new Error(await r.text());
   return SUPABASE_URL + "/storage/v1/object/public/photos/" + path;
+}
+
+
+async function savePhotosToSupabase(pitId, urls) {
+  try {
+    await sbFetch("/rest/v1/pits?id=eq." + encodeURIComponent(pitId), {
+      method: "PATCH",
+      body: JSON.stringify({ photos: urls, updated_at: new Date().toISOString() })
+    });
+  } catch (e) {
+    console.warn("save photos failed", e);
+  }
 }
 
 function meta(id) { return META[id] || { status: "none", excavate: "", nfc: "", note: "" }; }
@@ -339,7 +354,9 @@ function edit(id) {
     btn.onclick = function () {
       photos.splice(i, 1);
       PHOTOS[id] = photos;
-      put("photos", id, photos).then(function () { edit(id); });
+      put("photos", id, photos);
+      savePhotosToSupabase(id, photos.filter(function(u){ return String(u).indexOf("data:") !== 0; }));
+      edit(id);
     };
     fig.appendChild(img);
     fig.appendChild(btn);
@@ -352,7 +369,11 @@ function edit(id) {
     })).then(function (urls) {
       urls.forEach(function (u) { if (u) photos.push(u); });
       PHOTOS[id] = photos;
-      put("photos", id, photos).then(function () { edit(id); });
+      put("photos", id, photos);
+      savePhotosToSupabase(id, photos.filter(function(u){ return u.indexOf("supabase.co") >= 0 || u.indexOf("photos/") === 0; }));
+      edit(id);
+    }).catch(function(err) {
+      alert("上載失敗: " + (err && err.message ? err.message : err));
     });
   };
   if (!READ_ONLY) document.getElementById("saveBtn").onclick = function () {
