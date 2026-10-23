@@ -117,6 +117,67 @@ const PUBLIC_PHOTOS = {
   "R51-1E-1": ["photos/R51-1E-1-1.jpg", "photos/R51-1E-1-2.jpg", "photos/R51-1E-1-3.jpg"]
 };
 const SEED_META = {"R52-2A-1":{"status":"nfc","excavate":"2026-10-21","nfc":"2026-10-21","note":""},"R51-1A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-21","note":""},"R72-2A-1":{"status":"nfc","excavate":"2026-10-22","nfc":"2026-10-23","note":""},"R64-4A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-22","note":""},"R54-4A-1":{"status":"nfc","excavate":"2026-10-20","nfc":"2026-10-21","note":""},"R51-1E-1":{"status":"none","excavate":"","nfc":"","note":""}};
+
+// Supabase config (public anon key is safe for frontend)
+const SUPABASE_URL = "https://qsbdjamnjxgadenmzhlp.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzYmRqYW1uanhnYWRlbm16aGxwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzE3NzQsImV4cCI6MjA4NjQ0Nzc3NH0.gT0UoqttWT-k05j98-9zp2IViMKym32mwv2_6GIpfAs";
+
+async function sbFetch(path, opts) {
+  const r = await fetch(SUPABASE_URL + path, Object.assign({
+    headers: {
+      "apikey": SUPABASE_ANON,
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    }
+  }, opts || {}));
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function loadFromSupabase() {
+  try {
+    const rows = await sbFetch("/rest/v1/pits?select=*");
+    rows.forEach(function(row) {
+      META[row.id] = {
+        status: row.status || "none",
+        excavate: row.excavate || "",
+        nfc: row.nfc || "",
+        note: row.note || ""
+      };
+    });
+    saveMeta();
+    render();
+  } catch (e) {
+    console.warn("Supabase load failed", e);
+  }
+}
+
+async function saveToSupabase(id, data) {
+  try {
+    await sbFetch("/rest/v1/pits", {
+      method: "POST",
+      body: JSON.stringify({
+        id: id,
+        status: data.status,
+        excavate: data.excavate || null,
+        nfc: data.nfc || null,
+        note: data.note || null,
+        updated_at: new Date().toISOString()
+      }),
+      headers: {
+        "apikey": SUPABASE_ANON,
+        "Authorization": "Bearer " + SUPABASE_ANON,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      }
+    });
+  } catch (e) {
+    console.warn("Supabase save failed", e);
+  }
+}
+
+
 function meta(id) { return META[id] || { status: "none", excavate: "", nfc: "", note: "" }; }
 function show(item) {
   const q = document.getElementById("q").value.trim().toLowerCase();
@@ -203,6 +264,7 @@ function render() {
       const cur = meta(id);
       META[id] = { status: el.value, excavate: cur.excavate || "", nfc: cur.nfc || "", note: cur.note || "" };
       saveMeta();
+      saveToSupabase(id, META[id]);
       put("meta", "all", META).catch(function () {});
       render();
     };
@@ -264,6 +326,7 @@ function edit(id) {
       note: document.getElementById("f-note").value
     };
     saveMeta();
+    saveToSupabase(id, META[id]);
     put("meta", "all", META).catch(function () {});
     document.getElementById("overlay").classList.remove("open");
     document.getElementById("saved").textContent = "已儲存 " + id;
@@ -325,6 +388,7 @@ Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("pho
   });
   saveMeta();
   render();
+  loadFromSupabase();
   const h = location.hash.slice(1);
   if (h && ALL.some(function (x) { return x.id === h; })) edit(h);
 }).catch(function () {});
