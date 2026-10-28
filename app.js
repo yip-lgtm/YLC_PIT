@@ -422,12 +422,37 @@ if (READ_ONLY) {
   if (eb) eb.style.display = "none";
   if (ib) ib.style.display = "none";
 }
-document.getElementById("exportBtn").onclick = function () {
+function exportHTML() {
+  const data = { meta: META, photos: PHOTOS };
+  const css = document.querySelector("style") ? document.querySelector("style").textContent : "";
+  const body = document.body.innerHTML
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/id="overlay"[^>]*>[\s\S]*$/, 'id="overlay"><div class="card" id="card"></div></div>');
+  const html = '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YLC triangle export</title><style>' + css + '</style></head><body>' +
+    '<header><h1>YLC triangle <span>export · ' + new Date().toISOString().slice(0,10) + '</span></h1></header>' +
+    '<main><div id="plan"></div></main>' +
+    '<script>const EXPORT_DATA = ' + JSON.stringify(data) + ';\n' +
+    'const META = EXPORT_DATA.meta || {};\n' +
+    'const PHOTOS = EXPORT_DATA.photos || {};\n' +
+    'const STATUS = [{v:"none",t:"未開始"},{v:"exc",t:"已開挖"},{v:"nfc",t:"已灌"},{v:"done",t:"已核實"}];\n' +
+    'function st(id){return (META[id]&&META[id].status)||"none";}\n' +
+    'function label(v){var s=STATUS.filter(function(x){return x.v===v;})[0];return s?s.t:v;}\n' +
+    'var html = "<h2>YLC PIT Export</h2><table border=1 cellpadding=6 style=\"border-collapse:collapse;width:100%\"><tr><th>ID</th><th>狀態</th><th>開始</th><th>完成</th><th>備註</th><th>相片</th></tr>";\n' +
+    'Object.keys(META).sort().forEach(function(id){\n' +
+    '  var m = META[id]||{};\n' +
+    '  var ph = (PHOTOS[id]||[]).map(function(u){return "<img src=\""+u+"\" style=\"max-width:120px;max-height:90px;margin:2px\">";}).join("");\n' +
+    '  html += "<tr><td>"+id+"</td><td>"+label(m.status)+"</td><td>"+(m.excavate||"")+"</td><td>"+(m.nfc||"")+"</td><td>"+(m.note||"")+"</td><td>"+ph+"</td></tr>";\n' +
+    '});\n' +
+    'html += "</table>";\n' +
+    'document.getElementById("plan").innerHTML = html;\n' +
+    '</script></body></html>';
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify({ meta: META, photos: PHOTOS })], { type: "application/json" }));
-  a.download = "YLC-grid.json";
+  a.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  a.download = "YLC-grid.html";
   a.click();
-};
+}
+document.getElementById("exportBtn").onclick = exportHTML;
+document.getElementById("exportBtn").textContent = "export HTML";
 document.getElementById("importBtn").onclick = function () { document.getElementById("importFile").click(); };
 document.getElementById("importFile").onchange = function (e) {
   const file = e.target.files[0];
