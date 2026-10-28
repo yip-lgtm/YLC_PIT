@@ -424,7 +424,7 @@ if (READ_ONLY) {
 }
 function exportHTML() {
   function esc(s) {
-    return String(s == null ? "" : s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
+    return String(s == null ? "" : s).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """);
   }
   function label(v) {
     var s = STATUS.filter(function(x){ return x.v === v; })[0];
