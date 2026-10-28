@@ -423,30 +423,30 @@ if (READ_ONLY) {
   if (ib) ib.style.display = "none";
 }
 function exportHTML() {
-  const data = { meta: META, photos: PHOTOS };
-  const css = document.querySelector("style") ? document.querySelector("style").textContent : "";
-  const body = document.body.innerHTML
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/id="overlay"[^>]*>[\s\S]*$/, 'id="overlay"><div class="card" id="card"></div></div>');
-  const html = '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YLC triangle export</title><style>' + css + '</style></head><body>' +
-    '<header><h1>YLC triangle <span>export · ' + new Date().toISOString().slice(0,10) + '</span></h1></header>' +
-    '<main><div id="plan"></div></main>' +
-    '<script>const EXPORT_DATA = ' + JSON.stringify(data) + ';\n' +
-    'const META = EXPORT_DATA.meta || {};\n' +
-    'const PHOTOS = EXPORT_DATA.photos || {};\n' +
-    'const STATUS = [{v:"none",t:"未開始"},{v:"exc",t:"已開挖"},{v:"nfc",t:"已灌"},{v:"done",t:"已核實"}];\n' +
-    'function st(id){return (META[id]&&META[id].status)||"none";}\n' +
-    'function label(v){var s=STATUS.filter(function(x){return x.v===v;})[0];return s?s.t:v;}\n' +
-    'var html = "<h2>YLC PIT Export</h2><table border=1 cellpadding=6 style=\"border-collapse:collapse;width:100%\"><tr><th>ID</th><th>狀態</th><th>開始</th><th>完成</th><th>備註</th><th>相片</th></tr>";\n' +
-    'Object.keys(META).sort().forEach(function(id){\n' +
-    '  var m = META[id]||{};\n' +
-    '  var ph = (PHOTOS[id]||[]).map(function(u){return "<img src=\""+u+"\" style=\"max-width:120px;max-height:90px;margin:2px\">";}).join("");\n' +
-    '  html += "<tr><td>"+id+"</td><td>"+label(m.status)+"</td><td>"+(m.excavate||"")+"</td><td>"+(m.nfc||"")+"</td><td>"+(m.note||"")+"</td><td>"+ph+"</td></tr>";\n' +
-    '});\n' +
-    'html += "</table>";\n' +
-    'document.getElementById("plan").innerHTML = html;\n' +
-    '</script></body></html>';
-  const a = document.createElement("a");
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");
+  }
+  function label(v) {
+    var s = STATUS.filter(function(x){ return x.v === v; })[0];
+    return s ? s.t : (v || "");
+  }
+  var rows = Object.keys(META).sort().map(function(id) {
+    var m = META[id] || {};
+    var ph = (PHOTOS[id] || []).map(function(u) {
+      var src = String(u);
+      if (src.indexOf("photos/") === 0) src = "https://yip-lgtm.github.io/YLC_PIT/" + src;
+      return '<img src="' + esc(src) + '" style="max-width:140px;max-height:100px;margin:2px;border-radius:4px">';
+    }).join("");
+    return "<tr><td>" + esc(id) + "</td><td>" + esc(label(m.status)) + "</td><td>" + esc(m.excavate||"") + "</td><td>" + esc(m.nfc||"") + "</td><td>" + esc(m.note||"") + "</td><td>" + ph + "</td></tr>";
+  }).join("");
+  if (!rows) rows = "<tr><td colspan='6'>（沒有資料 — 請等頁面載入完成後再 export）</td></tr>";
+  var html = '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YLC triangle export</title>' +
+    '<style>body{font-family:system-ui,sans-serif;background:#0e141b;color:#e8eef6;margin:16px}h1{font-size:18px}table{border-collapse:collapse;width:100%;background:#17202b}th,td{border:1px solid #314155;padding:8px;text-align:left;vertical-align:top}th{background:#223044}img{display:inline-block}</style></head><body>' +
+    '<h1>YLC triangle export · ' + new Date().toISOString().slice(0,10) + '</h1>' +
+    '<p>共 ' + Object.keys(META).length + ' 個有記錄的坑</p>' +
+    '<table><tr><th>ID</th><th>狀態</th><th>開始日期</th><th>完成日期</th><th>備註</th><th>相片</th></tr>' +
+    rows + '</table></body></html>';
+  var a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
   a.download = "YLC-grid.html";
   a.click();
