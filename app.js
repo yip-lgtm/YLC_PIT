@@ -152,8 +152,9 @@ async function loadFromSupabase() {
         nfc: row.nfc || "",
         note: row.note || ""
       };
-      if (row.photos && row.photos.length) {
+      if (Array.isArray(row.photos)) {
         PHOTOS[row.id] = row.photos.slice();
+        put("photos", row.id, PHOTOS[row.id]).catch(function(){});
       }
     });
     saveMeta();
@@ -353,9 +354,9 @@ function edit(id) {
     btn.textContent = "移除";
     btn.onclick = function () {
       photos.splice(i, 1);
-      PHOTOS[id] = photos;
-      put("photos", id, photos);
-      savePhotosToSupabase(id, photos.filter(function(u){ return String(u).indexOf("data:") !== 0; }));
+      PHOTOS[id] = photos.slice();
+      put("photos", id, PHOTOS[id]);
+      savePhotosToSupabase(id, PHOTOS[id].filter(function(u){ return String(u).indexOf("data:") !== 0; }));
       edit(id);
     };
     fig.appendChild(img);
@@ -473,7 +474,7 @@ Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("pho
   PHOTOS = pair[1] || {};
   // Always prefer public photos when available
   Object.keys(PUBLIC_PHOTOS).forEach(function(id) {
-    PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
+    if (!PHOTOS[id] || !PHOTOS[id].length) PHOTOS[id] = PUBLIC_PHOTOS[id].slice();
   });
   saveMeta();
   render();
