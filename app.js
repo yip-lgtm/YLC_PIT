@@ -482,3 +482,107 @@ Promise.all([get("meta", "all").catch(function () { return {}; }), allStore("pho
   const h = location.hash.slice(1);
   if (h && ALL.some(function (x) { return x.id === h; })) edit(h);
 }).catch(function () {});
+
+
+// ===== Concrete tab =====
+let CONC = [];
+let TOTAL_VOL = 599.025;
+
+function showTab(name) {
+  document.getElementById("viewPits").style.display = name === "pits" ? "" : "none";
+  document.getElementById("viewConc").style.display = name === "conc" ? "" : "none";
+  document.getElementById("tabPits").classList.toggle("on", name === "pits");
+  document.getElementById("tabConc").classList.toggle("on", name === "conc");
+  if (name === "conc") renderConc();
+}
+document.getElementById("tabPits").onclick = function(){ showTab("pits"); };
+document.getElementById("tabConc").onclick = function(){ showTab("conc"); };
+
+async function loadConc() {
+  try {
+    const rows = await sbFetch("/rest/v1/concrete?select=*&order=day.asc,id.asc");
+    CONC = rows || [];
+    const st = await sbFetch("/rest/v1/settings?key=eq.total_vol&select=value");
+    if (st && st[0] && st[0].value) TOTAL_VOL = parseFloat(st[0].value) || TOTAL_VOL;
+    const el = document.getElementById("cTotal");
+    if (el) el.value = TOTAL_VOL;
+    renderConc();
+  } catch (e) { console.warn("loadConc", e); }
+}
+
+function renderConc() {
+  const body = document.getElementById("concBody");
+  if (!body) return;
+  const byDay = {};
+  CONC.forEach(function(r) {
+    const d = r.day;
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(r);
+  });
+  const days = Object.keys(byDay).sort();
+  let cum = 0;
+  let html = "";
+  days.forEach(function(d) {
+    const items = byDay[d];
+    const daySum = items.reduce(function(s, r){ return s + Number(r.qty); }, 0);
+    cum += daySum;
+    const rate = TOTAL_VOL ? (cum / TOTAL_VOL * 100) : 0;
+    items.forEach(function(r, i) {
+      html += "<tr>" +
+        "<td>" + (i === 0 ? d : "") + "</td>" +
+        "<td>" + Number(r.qty) + "</td>" +
+        "<td>" + (i === items.length - 1 ? daySum.toFixed(1) : "") + "</td>" +
+        "<td>" + (i === items.length - 1 ? cum.toFixed(1) : "") + "</td>" +
+        "<td>" + (i === items.length - 1 ? TOTAL_VOL : "") + "</td>" +
+        "<td>" + (i === items.length - 1 ? rate.toFixed(1) + "%" : "") + "</td>" +
+        "<td><button data-del='" + r.id + "'>刪</button></td>" +
+        "</tr>";
+    });
+  });
+  body.innerHTML = html || "<tr><td colspan='7'>尚未有記錄</td></tr>";
+  const sum = document.getElementById("concSummary");
+  if (sum) {
+    const rate = TOTAL_VOL ? (cum / TOTAL_VOL * 100) : 0;
+    sum.innerHTML =
+      '<span class="chip">累計 <b>' + cum.toFixed(1) + " m³</b></span>" +
+      '<span class="chip">總量 <b>' + TOTAL_VOL + " m³</b></span>" +
+      '<span class="chip">完成率 <b>' + rate.toFixed(1) + "%</b></span>" +
+      '<span class="chip">剩餘 <b>' + (TOTAL_VOL - cum).toFixed(1) + " m³</b></span>";
+  }
+  body.querySelectorAll("[data-del]").forEach(function(btn) {
+    btn.onclick = function() {
+      const id = btn.getAttribute("data-del");
+      sbFetch("/rest/v1/concrete?id=eq." + id, { method: "DELETE" }).then(loadConc);
+    };
+  });
+}
+
+document.getElementById("cAdd").onclick = function() {
+  const day = document.getElementById("cDay").value;
+  const qty = parseFloat(document.getElementById("cQty").value);
+  const note = document.getElementById("cNote").value || null;
+  if (!day || !(qty > 0)) { alert("請填日期同數量"); return; }
+  sbFetch("/rest/v1/concrete", {
+    method: "POST",
+    body: JSON.stringify({ day: day, qty: qty, note: note })
+  }).then(function() {
+    document.getElementById("cQty").value = "";
+    document.getElementById("cNote").value = "";
+    loadConc();
+  }).catch(function(e){ alert("加入失敗: " + e.message); });
+};
+
+document.getElementById("cTotal").onchange = function() {
+  const v = parseFloat(this.value);
+  if (!(v > 0)) return;
+  TOTAL_VOL = v;
+  sbFetch("/rest/v1/settings?key=eq.total_vol", {
+    method: "PATCH",
+    body: JSON.stringify({ value: String(v) })
+  }).then(renderConc).catch(function(){ renderConc(); });
+};
+
+const today = new Date().toISOString().slice(0, 10);
+const cDay = document.getElementById("cDay");
+if (cDay && !cDay.value) cDay.value = today;
+loadConc();
