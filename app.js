@@ -166,6 +166,7 @@ async function loadFromSupabase() {
 
 async function saveToSupabase(id, data) {
   try {
+    var photos = (PHOTOS[id] || []).filter(function(u){ return String(u).indexOf("data:") !== 0; });
     await sbFetch("/rest/v1/pits", {
       method: "POST",
       body: JSON.stringify({
@@ -174,6 +175,7 @@ async function saveToSupabase(id, data) {
         excavate: data.excavate || null,
         nfc: data.nfc || null,
         note: data.note || null,
+        photos: photos,
         updated_at: new Date().toISOString()
       }),
       headers: {
